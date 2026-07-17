@@ -1,0 +1,74 @@
+# MANIFEST 1: INGRESS AND INITIAL ROUTING
+# This manifest establishes the entry point for external traffic and sets up the initial, stable routing rule.
+---
+# -------------------------------------------------------------------------------------------------
+# RESOURCE: Gateway
+# PURPOSE: Defines a network entry point for the service mesh.
+# WHY: By default, services inside the mesh are not exposed externally. The Gateway opens a specific
+#      port (port 80) on the Istio Ingress Gateway load balancer, allowing traffic to enter.
+#      It acts as the "front door" for our application.
+# -------------------------------------------------------------------------------------------------
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: bookinfo-gateway
+spec:
+  # The selector targets the default Istio ingress gateway controller. This is where the configuration
+  # will be applied.
+  selector:
+    istio: ingressgateway # use Istio's default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    # The hosts field specifies which domains this gateway will handle. Using "*" makes it apply
+    # to any host, which is convenient for testing. In production, you would use a specific
+    # domain like "bookinfo.example.com".
+    hosts:
+    - "*"
+---
+# -------------------------------------------------------------------------------------------------
+# RESOURCE: VirtualService
+# PURPOSE:  To route traffic that has entered the Gateway to a specific service inside the mesh.
+# WHY:      The Gateway only lets traffic in; it doesn't know *where* it should go. The VirtualService
+#           provides that routing intelligence. This is the "Crawl" phase of our plan: create a
+#           simple, 100% rule to see it in action.
+# -------------------------------------------------------------------------------------------------
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: productpage
+spec:
+  # The 'hosts' field specifies the destination for the traffic. For external traffic, this should
+  # match the host defined in the Gateway. For internal mesh traffic, this would be the short
+  - hosts:
+    - "*"
+  # The 'gateways' field attaches this VirtualService to our 'bookinfo-gateway'. This means it will
+  # only apply to traffic coming through that specific gateway.
+  gateways:
+  - bookinfo-gateway
+  http:
+  # An ordered list of routing rules. The first rule that matches an incoming request is used.
+  - match:
+    # A simple match condition. This one matches any request with a URI starting with /productpage.
+    - uri:
+        prefix: /productpage
+    - uri:
+        prefix: /static
+    - uri:
+        exact: /login
+    - uri:
+        exact: /logout
+    - uri:
+        prefix: /api/v1/products
+    # The 'route' block defines where the matched traffic is sent.
+    route:
+    # We are sending 100% of the traffic to a single destination.
+    - destination:
+        # The 'host' is the internal Kubernetes service name.
+        host: productpage
+        # The 'subset' refers to a named version of the service defined in a DestinationRule.
+        # By routing explicitly to 'v1', we ensure all users see the same stable version.
+        subset: v1
+      # No 'weight' is needed here, as it's a single destination.

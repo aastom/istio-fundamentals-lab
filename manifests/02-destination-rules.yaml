@@ -1,0 +1,66 @@
+# MANIFEST 2: DEFINING SERVICE SUBSETS
+# This manifest creates DestinationRules for all services in the Bookinfo application.
+---
+# -------------------------------------------------------------------------------------------------
+# RESOURCE: DestinationRule
+# PURPOSE:  To define named, addressable subsets of a service, typically based on pod labels.
+# WHY:      A Kubernetes Service (e.g., 'reviews') load balances across all its pods (v1, v2, v3)
+#           by default. Istio needs to know how to distinguish between these versions.
+#           A DestinationRule *defines* these versions as 'subsets' but does *not* send traffic
+#           to them. It is a prerequisite for creating version-based routing rules in a VirtualService.
+#           This is the "Walk" phase of our plan.
+# -------------------------------------------------------------------------------------------------
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: productpage
+spec:
+  # The 'host' specifies the Kubernetes service this rule applies to.
+  host: productpage
+  # 'subsets' is a list of defined versions.
+  subsets:
+  - name: v1
+    # The 'labels' selector must match the labels on the pods of the target deployment.
+    # This is how Istio maps the subset name 'v1' to the actual 'productpage-v1' pods.
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: reviews
+spec:
+  host: reviews
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+  - name: v3
+    labels:
+      version: v3
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: ratings
+spec:
+  host: ratings
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: details
+spec:
+  host: details
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
